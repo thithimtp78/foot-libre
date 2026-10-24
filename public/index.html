@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Foot Libre</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">{ "imports": { "three": "./vendor/three.module.js" } }</script>
+</head>
+<body>
+  <div id="game"></div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="scoreboard">
+      <span class="team t0"><i></i><b id="name0">BLEUS</b></span>
+      <span id="score">0 - 0</span>
+      <span class="team t1"><b id="name1">ROUGES</b><i></i></span>
+      <span id="clock">0'</span>
+    </div>
+    <div id="netinfo"></div>
+    <div id="message"></div>
+    <div id="powers"></div>
+    <canvas id="minimap" width="210" height="136"></canvas>
+    <div id="hint"></div>
+    <div id="toast"></div>
+  </div>
+
+  <!-- Menus -->
+  <div id="overlay">
+    <section class="screen" id="scr-menu">
+      <h1>FOOT<span>LIBRE</span></h1>
+      <p class="tag">Football 3D gratuit · Clavier, souris et manette · En ligne</p>
+      <div class="menu">
+        <button data-go="quick">Match rapide</button>
+        <button data-go="local">2 joueurs (même PC)</button>
+        <button data-go="online">Multijoueur en ligne</button>
+        <button data-go="controls">Commandes</button>
+        <button data-go="options">Options</button>
+      </div>
+      <p class="pads" id="padstatus"></p>
+    </section>
+
+    <section class="screen" id="scr-quick">
+      <h2 id="quick-title">Match rapide</h2>
+      <div class="teams">
+        <div class="teampick" id="pick0"><small id="pick0-label">Ton équipe</small><button class="arrow" data-pick="0" data-d="-1">◀</button><div class="kit"></div><b></b><button class="arrow" data-pick="0" data-d="1">▶</button></div>
+        <div class="vs">VS</div>
+        <div class="teampick" id="pick1"><small id="pick1-label">Adversaire (IA)</small><button class="arrow" data-pick="1" data-d="-1">◀</button><div class="kit"></div><b></b><button class="arrow" data-pick="1" data-d="1">▶</button></div>
+      </div>
+      <div class="menu">
+        <button data-cycle="difficulty" id="opt-diff"></button>
+        <button data-cycle="halfLength" id="opt-half"></button>
+        <button class="primary" id="btn-play">Coup d'envoi !</button>
+        <button data-go="menu">Retour</button>
+      </div>
+      <p class="note" id="quick-note"></p>
+    </section>
+
+    <section class="screen" id="scr-online">
+      <h2>Multijoueur en ligne</h2>
+      <div class="form">
+        <label>Pseudo <input id="in-name" maxlength="16" placeholder="Joueur"></label>
+        <label>Serveur <input id="in-server" placeholder="même adresse que le jeu"></label>
+      </div>
+      <div class="menu">
+        <button data-cycle="halfLength" id="opt-half2"></button>
+        <button class="primary" id="btn-create">Créer une salle</button>
+        <div class="row"><input id="in-code" maxlength="5" placeholder="CODE" autocomplete="off"><button id="btn-join">Rejoindre</button></div>
+        <button data-go="menu">Retour</button>
+      </div>
+      <p class="note" id="online-status">Crée une salle et donne le code à ton ami, ou entre son code. Jusqu'à 4 joueurs (2 contre 2).</p>
+    </section>
+
+    <section class="screen" id="scr-lobby">
+      <h2>Salle <span id="lobby-code" class="code"></span></h2>
+      <p class="note">Donne ce code à tes amis pour qu'ils te rejoignent.</p>
+      <div class="lobby">
+        <div class="col"><h3 id="lobby-t0"></h3><ul id="lobby-l0"></ul></div>
+        <div class="col"><h3 id="lobby-t1"></h3><ul id="lobby-l1"></ul></div>
+      </div>
+      <div class="menu">
+        <button id="btn-team">Changer d'équipe</button>
+        <button class="primary" id="btn-start">Lancer le match</button>
+        <button id="btn-leave">Quitter la salle</button>
+      </div>
+      <p class="note" id="lobby-note"></p>
+    </section>
+
+    <section class="screen" id="scr-controls">
+      <h2>Commandes</h2>
+      <table class="controls">
+        <thead><tr><th>Action</th><th>Clavier / souris</th><th>Manette</th></tr></thead>
+        <tbody>
+          <tr><td>Se déplacer</td><td>ZQSD / WASD ou flèches</td><td>Stick gauche / croix</td></tr>
+          <tr><td>Sprint</td><td>Maj</td><td>RT ou RB</td></tr>
+          <tr><td>Passe courte · <em>défense : tacle</em></td><td>J ou clic gauche</td><td>A / ✕</td></tr>
+          <tr><td>Tir (maintenir pour la puissance) · <em>défense : tacle glissé</em></td><td>K ou clic droit</td><td>X / ▢</td></tr>
+          <tr><td>Passe lobée / centre</td><td>L ou clic molette</td><td>B / ◯</td></tr>
+          <tr><td>Passe en profondeur</td><td>I</td><td>Y / △</td></tr>
+          <tr><td>Changer de joueur</td><td>Espace</td><td>LB / L1</td></tr>
+          <tr><td>Caméra</td><td>C</td><td>Select / Share</td></tr>
+          <tr><td>Pause</td><td>Échap ou P</td><td>Start / Options</td></tr>
+        </tbody>
+      </table>
+      <p class="note">Oriente le stick ou les touches pendant la passe pour choisir le receveur, et pendant le tir pour viser un côté du but. Une puissance au maximum risque de passer au-dessus.</p>
+      <div class="menu"><button data-back>Retour</button></div>
+    </section>
+
+    <section class="screen" id="scr-options">
+      <h2>Options</h2>
+      <div class="menu">
+        <button data-cycle="quality" id="opt-quality"></button>
+        <button data-cycle="volume" id="opt-volume"></button>
+        <button data-cycle="difficulty" id="opt-diff2"></button>
+        <button data-cycle="halfLength" id="opt-half3"></button>
+        <button data-go="menu">Retour</button>
+      </div>
+      <p class="note">La qualité graphique s'applique au prochain match.</p>
+    </section>
+
+    <section class="screen" id="scr-pause">
+      <h2>Pause</h2>
+      <div class="menu">
+        <button id="btn-resume" class="primary">Reprendre</button>
+        <button data-go="controls">Commandes</button>
+        <button id="btn-quit">Quitter le match</button>
+      </div>
+    </section>
+
+    <section class="screen" id="scr-end">
+      <h2>Fin du match</h2>
+      <div id="final"></div>
+      <div class="menu">
+        <button class="primary" id="btn-again">Rejouer</button>
+        <button id="btn-menu">Menu principal</button>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

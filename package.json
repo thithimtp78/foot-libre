@@ -1,0 +1,16 @@
+{
+  "name": "foot-libre",
+  "version": "0.1.0",
+  "description": "Jeu de football 3D gratuit, jouable au clavier/souris et à la manette, avec multijoueur en ligne.",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/sim.test.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "three": "0.169.0",
+    "ws": "8.18.0"
+  }
+}
