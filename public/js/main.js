@@ -3,7 +3,7 @@ import { Match, EdgeTracker, PITCH, TEAM_SIZE } from '../shared/sim.js';
 import { Renderer, interpolateView } from './render.js';
 import { Input } from './input.js';
 import { Sound } from './audio.js';
-import { Net, defaultServerUrl } from './net.js';
+import { Net, P2PHost, P2PGuest, defaultServerUrl } from './net.js';
 
 const TEAMS = [
   { name: 'AZUR FC', shirt: 0x1f5fd6, shorts: 0xffffff, socks: 0x1f5fd6, number: 0xffffff, gk: 0x2bd96b },
@@ -187,41 +187,53 @@ $('#btn-again').addEventListener('click', () => {
 let net = null, room = null;
 $('#in-name').value = settings.name;
 $('#in-server').value = settings.server;
+// Avec le serveur Node (npm start), les salles passent par lui ; sinon (page web statique), en pair à pair.
+let useServer = false;
 if (window.FOOT_STATIC) {
-  $('#online-status').textContent = 'Cette version de démo n\'a pas de serveur : le multijoueur en ligne marche quand le jeu est lancé avec « npm start » (voir le README).';
+  $('#online-status').textContent = 'Cette démo ne permet pas le jeu en ligne. Utilise la version web du jeu (lien dans le README).';
   $('#btn-create').disabled = true; $('#btn-join').disabled = true;
-} else if (location.protocol === 'file:') $('#online-status').textContent = 'Le mode en ligne nécessite de lancer le serveur (npm start) ou d\'indiquer l\'adresse d\'un serveur.';
+} else {
+  fetch('health', { cache: 'no-store' }).then((r) => r.ok && r.text()).then((t) => { useServer = t === 'ok'; }).catch(() => {});
+}
 
-function connect(then) {
+function connect(then, mode, code) {
   settings.name = $('#in-name').value.trim() || 'Joueur';
   settings.server = $('#in-server').value.trim();
   save();
-  if (net?.open) { then(); return; }
+  const server = useServer || !!settings.server;
+  if (server && net?.open && net instanceof Net) { then(); return; }
   net?.close();
-  $('#online-status').textContent = 'Connexion au serveur…';
+  room = null;
+  $('#online-status').textContent = mode === 'create' && !server ? 'Création de la salle…' : 'Connexion…';
+  const handlers = {
+    open: then,
+    message: onNet,
+    close: () => {
+      $('#online-status').textContent = server ? 'Déconnecté du serveur.' : 'L\'hôte a quitté la partie.';
+      if (room) { room = null; if (game?.mode === 'online') { game = null; hud.classList.add('hidden'); } show('online', false); toast('Connexion perdue'); }
+    },
+    error: () => { $('#online-status').textContent = server ? 'Impossible de joindre le serveur. Vérifie l\'adresse ou lance « npm start ».' : 'Impossible de créer la salle. Vérifie ta connexion Internet.'; },
+  };
   try {
-    net = new Net(defaultServerUrl(settings.server), {
-      open: then,
-      message: onNet,
-      close: () => {
-        $('#online-status').textContent = 'Déconnecté du serveur.';
-        if (room) { room = null; if (game?.mode === 'online') { game = null; hud.classList.add('hidden'); } show('online', false); toast('Connexion perdue'); }
-      },
-      error: () => { $('#online-status').textContent = 'Impossible de joindre le serveur. Vérifie l\'adresse ou lance « npm start ».'; },
-    });
+    if (server) net = new Net(defaultServerUrl(settings.server), handlers);
+    else net = mode === 'create' ? new P2PHost(handlers) : new P2PGuest(code, handlers);
   } catch { $('#online-status').textContent = 'Adresse de serveur invalide.'; }
 }
-$('#btn-create').addEventListener('click', () => connect(() => net.send({ t: 'create', name: settings.name, halfLength: settings.halfLength, teams: settings.teams })));
+$('#btn-create').addEventListener('click', () => connect(() => net.send({ t: 'create', name: settings.name, halfLength: settings.halfLength, teams: settings.teams }), 'create'));
 $('#btn-join').addEventListener('click', () => {
   const code = $('#in-code').value.trim().toUpperCase();
   if (code.length < 4) { $('#online-status').textContent = 'Entre le code de la salle.'; return; }
-  connect(() => net.send({ t: 'join', name: settings.name, code }));
+  connect(() => net.send({ t: 'join', name: settings.name, code }), 'join', code);
 });
 $('#in-code').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#btn-join').click(); });
 $('#btn-team').addEventListener('click', () => net?.send({ t: 'team' }));
 $('#btn-start').addEventListener('click', () => net?.send({ t: 'start' }));
 $('#btn-leave').addEventListener('click', leaveRoom);
-function leaveRoom() { net?.send({ t: 'leave' }); room = null; show('online', false); }
+function leaveRoom() {
+  if (net instanceof Net) net.send({ t: 'leave' });
+  else { net?.close(); net = null; }
+  room = null; show('online', false);
+}
 
 function onNet(m) {
   if (m.t === 'err') { $('#online-status').textContent = m.msg; return; }

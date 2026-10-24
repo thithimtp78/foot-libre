@@ -8,7 +8,11 @@ Jeu de football 3D **gratuit et open source** pour PC, inspiré de FIFA. Il tour
 - **2 joueurs sur le même PC** : clavier + manette, ou deux moitiés de clavier si vous n'avez pas de manette.
 - **Multijoueur en ligne** : créez une salle, partagez le code à 5 caractères, jusqu'à 4 joueurs (2 contre 2). Les places vides sont jouées par l'IA.
 
-## Lancer le jeu
+## Jouer tout de suite
+
+**https://thithimtp78.github.io/foot-libre/** : rien à installer, ça marche dans Chrome, Edge ou Firefox, y compris le multijoueur en ligne. Celui qui crée la salle donne le code à 5 caractères à ses amis ; son navigateur fait office de serveur, donc il doit garder l'onglet du jeu affiché pendant le match.
+
+## Lancer le jeu sur son PC (facultatif)
 
 Il faut [Node.js](https://nodejs.org) 18 ou plus récent.
 
@@ -47,13 +51,16 @@ public/
   js/render.js         Rendu 3D Three.js : stade, pelouse procédurale, joueurs animés, caméra
   js/input.js          Clavier, souris, manettes (API Gamepad)
   js/audio.js          Sons générés (frappes, sifflet, foule) sans fichier audio
-  js/net.js            Client réseau
+  js/net.js            Client réseau (WebSocket ou pair à pair)
+  shared/rooms.js      Salles multijoueur (serveur Node ou navigateur hôte)
   js/main.js           Menus, boucle de jeu, HUD
-  vendor/three.module.js  Three.js r169 (licence MIT)
+  vendor/              Three.js r169 et PeerJS 1.5.4 (licences MIT)
 test/sim.test.js       Matchs IA contre IA en accéléré
 ```
 
-- La **même simulation** (`public/shared/sim.js`) tourne dans le navigateur en solo et sur le serveur en ligne : le serveur fait autorité (60 ticks/s), les clients envoient leurs entrées et reçoivent 30 instantanés/s qu'ils interpolent (≈100 ms) pour un rendu fluide.
+- La **même simulation** (`public/shared/sim.js`) tourne partout. En ligne, une seule machine fait autorité (60 ticks/s) : le serveur Node s'il est lancé, sinon le navigateur de l'hôte. Les autres joueurs envoient leurs entrées et reçoivent 30 instantanés/s qu'ils interpolent (≈100 ms) pour un rendu fluide.
+- Sans serveur, les joueurs se connectent en pair à pair (WebRTC via [PeerJS](https://peerjs.com), dont le serveur public sert uniquement à la mise en relation). La logique des salles (`public/shared/rooms.js`) est commune aux deux modes.
+- Le site est publié sur GitHub Pages depuis le dossier `public/` (branche `gh-pages`).
 - Tout est procédural (textures, sons) : aucun asset à télécharger, le jeu pèse moins de 1 Mo hors Three.js.
 - Réglages graphiques Rapides / Équilibrés / Beaux pour les petits PC.
 
